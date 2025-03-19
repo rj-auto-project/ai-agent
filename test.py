@@ -1,5 +1,5 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
-from browser_use import Agent, Browser
+from custom_browser_use import Agent, Browser
 from pydantic import SecretStr
 import os
 import asyncio
@@ -38,7 +38,7 @@ asyncio.run(main())
 
 
 # from langchain_openai import ChatOpenAI
-# from browser_use import Agent
+# from custom_browser_use import Agent
 # import asyncio
 # from dotenv import load_dotenv
 # load_dotenv()

@@ -7,7 +7,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 
 if TYPE_CHECKING:
-	from browser_use.agent.views import AgentOutput
+	from custom_browser_use.agent.views import AgentOutput
 
 
 class MessageMetadata(BaseModel):

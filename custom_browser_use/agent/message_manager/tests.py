@@ -3,10 +3,10 @@ from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
-from browser_use.agent.message_manager.service import MessageManager, MessageManagerSettings
-from browser_use.agent.views import ActionResult
-from browser_use.browser.views import BrowserState, TabInfo
-from browser_use.dom.views import DOMElementNode, DOMTextNode
+from custom_browser_use.agent.message_manager.service import MessageManager, MessageManagerSettings
+from custom_browser_use.agent.views import ActionResult
+from custom_browser_use.browser.views import BrowserState, TabInfo
+from custom_browser_use.dom.views import DOMElementNode, DOMTextNode
 
 
 @pytest.fixture(
@@ -188,8 +188,8 @@ def test_token_overflow_handling_with_real_flow(message_manager: MessageManager,
 				assert 'Current url: https://test' in last_msg.content
 
 		# Add model output every time
-		from browser_use.agent.views import AgentBrain, AgentOutput
-		from browser_use.controller.registry.views import ActionModel
+		from custom_browser_use.agent.views import AgentBrain, AgentOutput
+		from custom_browser_use.controller.registry.views import ActionModel
 
 		output = AgentOutput(
 			current_state=AgentBrain(
@@ -234,4 +234,4 @@ def test_token_overflow_handling_with_real_flow(message_manager: MessageManager,
 		assert message_manager.state.history.current_tokens == total_tokens
 
 
-# pytest -s browser_use/agent/message_manager/tests.py
+# pytest -s custom_browser_use/agent/message_manager/tests.py

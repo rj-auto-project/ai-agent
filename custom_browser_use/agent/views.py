@@ -11,16 +11,16 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from openai import RateLimitError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
 
-from browser_use.agent.message_manager.views import MessageManagerState
-from browser_use.agent.prompts import SystemPrompt
-from browser_use.browser.views import BrowserStateHistory
-from browser_use.controller.registry.views import ActionModel
-from browser_use.dom.history_tree_processor.service import (
+from custom_browser_use.agent.message_manager.views import MessageManagerState
+from custom_browser_use.agent.prompts import SystemPrompt
+from custom_browser_use.browser.views import BrowserStateHistory
+from custom_browser_use.controller.registry.views import ActionModel
+from custom_browser_use.dom.history_tree_processor.service import (
 	DOMElementNode,
 	DOMHistoryElement,
 	HistoryTreeProcessor,
 )
-from browser_use.dom.views import SelectorMap
+from custom_browser_use.dom.views import SelectorMap
 
 ToolCallingMethod = Literal['function_calling', 'json_mode', 'raw', 'auto']
 

@@ -5,18 +5,18 @@ from typing import Any, Callable, Dict, Generic, Optional, Type, TypeVar
 from langchain_core.language_models.chat_models import BaseChatModel
 from pydantic import BaseModel, Field, create_model
 
-from browser_use.browser.context import BrowserContext
-from browser_use.controller.registry.views import (
+from custom_browser_use.browser.context import BrowserContext
+from custom_browser_use.controller.registry.views import (
 	ActionModel,
 	ActionRegistry,
 	RegisteredAction,
 )
-from browser_use.telemetry.service import ProductTelemetry
-from browser_use.telemetry.views import (
+from custom_browser_use.telemetry.service import ProductTelemetry
+from custom_browser_use.telemetry.views import (
 	ControllerRegisteredFunctionsTelemetryEvent,
 	RegisteredFunction,
 )
-from browser_use.utils import time_execution_async, time_execution_sync
+from custom_browser_use.utils import time_execution_async, time_execution_sync
 
 Context = TypeVar('Context')
 

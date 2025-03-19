@@ -19,11 +19,11 @@ from langchain_core.messages import (
 # from lmnr.sdk.decorators import observe
 from pydantic import BaseModel, ValidationError
 
-from browser_use.agent.gif import create_history_gif
-from browser_use.agent.message_manager.service import MessageManager, MessageManagerSettings
-from browser_use.agent.message_manager.utils import convert_input_messages, extract_json_from_model_output, save_conversation
-from browser_use.agent.prompts import AgentMessagePrompt, PlannerPrompt, SystemPrompt
-from browser_use.agent.views import (
+from custom_browser_use.agent.gif import create_history_gif
+from custom_browser_use.agent.message_manager.service import MessageManager, MessageManagerSettings
+from custom_browser_use.agent.message_manager.utils import convert_input_messages, extract_json_from_model_output, save_conversation
+from custom_browser_use.agent.prompts import AgentMessagePrompt, PlannerPrompt, SystemPrompt
+from custom_browser_use.agent.views import (
 	ActionResult,
 	AgentError,
 	AgentHistory,
@@ -35,22 +35,22 @@ from browser_use.agent.views import (
 	StepMetadata,
 	ToolCallingMethod,
 )
-from browser_use.browser.browser import Browser
-from browser_use.browser.context import BrowserContext
-from browser_use.browser.views import BrowserState, BrowserStateHistory
-from browser_use.controller.registry.views import ActionModel
-from browser_use.controller.service import Controller
-from browser_use.dom.history_tree_processor.service import (
+from custom_browser_use.browser.browser import Browser
+from custom_browser_use.browser.context import BrowserContext
+from custom_browser_use.browser.views import BrowserState, BrowserStateHistory
+from custom_browser_use.controller.registry.views import ActionModel
+from custom_browser_use.controller.service import Controller
+from custom_browser_use.dom.history_tree_processor.service import (
 	DOMHistoryElement,
 	HistoryTreeProcessor,
 )
-from browser_use.telemetry.service import ProductTelemetry
-from browser_use.telemetry.views import (
+from custom_browser_use.telemetry.service import ProductTelemetry
+from custom_browser_use.telemetry.views import (
 	AgentEndTelemetryEvent,
 	AgentRunTelemetryEvent,
 	AgentStepTelemetryEvent,
 )
-from browser_use.utils import time_execution_async, time_execution_sync
+from custom_browser_use.utils import time_execution_async, time_execution_sync
 
 load_dotenv()
 logger = logging.getLogger(__name__)

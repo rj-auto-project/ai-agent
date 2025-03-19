@@ -77,7 +77,7 @@ def setup_logging():
 
 	class BrowserUseFormatter(logging.Formatter):
 		def format(self, record):
-			if type(record.name) == str and record.name.startswith('browser_use.'):
+			if type(record.name) == str and record.name.startswith('custom_browser_use.'):
 				record.name = record.name.split('.')[-2]
 			return super().format(record)
 
@@ -102,13 +102,13 @@ def setup_logging():
 	else:
 		root.setLevel(logging.INFO)
 
-	# Configure browser_use logger
-	browser_use_logger = logging.getLogger('browser_use')
+	# Configure custom_browser_use logger
+	browser_use_logger = logging.getLogger('custom_browser_use')
 	browser_use_logger.propagate = False  # Don't propagate to root logger
 	browser_use_logger.addHandler(console)
 	browser_use_logger.setLevel(root.level)  # Set same level as root logger
 
-	logger = logging.getLogger('browser_use')
+	logger = logging.getLogger('custom_browser_use')
 	logger.info('BrowserUse logging setup complete with level %s', log_type)
 	# Silence third-party loggers
 	for logger in [

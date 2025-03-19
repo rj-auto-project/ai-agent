@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from browser_use.browser.browser import Browser, BrowserConfig
-from browser_use.dom.views import DOMBaseNode, DOMElementNode, DOMTextNode
-from browser_use.utils import time_execution_sync
+from custom_browser_use.browser.browser import Browser, BrowserConfig
+from custom_browser_use.dom.views import DOMBaseNode, DOMElementNode, DOMTextNode
+from custom_browser_use.utils import time_execution_sync
 
 
 class ElementTreeSerializer:
@@ -27,7 +27,7 @@ class ElementTreeSerializer:
 		return node_to_dict(element_tree)
 
 
-# run with: pytest browser_use/browser/tests/test_clicks.py
+# run with: pytest custom_browser_use/browser/tests/test_clicks.py
 @pytest.mark.asyncio
 async def test_highlight_elements():
 	browser = Browser(config=BrowserConfig(headless=False, disable_security=True))

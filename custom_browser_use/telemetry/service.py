@@ -6,8 +6,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from posthog import Posthog
 
-from browser_use.telemetry.views import BaseTelemetryEvent
-from browser_use.utils import singleton
+from custom_browser_use.telemetry.views import BaseTelemetryEvent
+from custom_browser_use.utils import singleton
 
 load_dotenv()
 
@@ -28,7 +28,7 @@ class ProductTelemetry:
 	If the environment variable `ANONYMIZED_TELEMETRY=False`, anonymized telemetry will be disabled.
 	"""
 
-	USER_ID_PATH = str(Path.home() / '.cache' / 'browser_use' / 'telemetry_user_id')
+	USER_ID_PATH = str(Path.home() / '.cache' / 'custom_browser_use' / 'telemetry_user_id')
 	PROJECT_API_KEY = 'phc_F8JMNjW1i2KbGUTaW1unnDdLSPCoyc52SGRU0JecaUh'
 	HOST = 'https://eu.i.posthog.com'
 	UNKNOWN_USER_ID = 'UNKNOWN'

@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
 	from playwright.async_api import Page
 
-from browser_use.dom.views import (
+from custom_browser_use.dom.views import (
 	DOMBaseNode,
 	DOMElementNode,
 	DOMState,
 	DOMTextNode,
 	SelectorMap,
 )
-from browser_use.utils import time_execution_async
+from custom_browser_use.utils import time_execution_async
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class DomService:
 		self.page = page
 		self.xpath_cache = {}
 
-		self.js_code = resources.read_text('browser_use.dom', 'buildDomTree.js')
+		self.js_code = resources.read_text('custom_browser_use.dom', 'buildDomTree.js')
 
 	# region - Clickable elements
 	@time_execution_async('--get_clickable_elements')

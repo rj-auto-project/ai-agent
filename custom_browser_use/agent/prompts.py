@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING, List, Optional
 from langchain_core.messages import HumanMessage, SystemMessage
 
 if TYPE_CHECKING:
-	from browser_use.agent.views import ActionResult, AgentStepInfo
-	from browser_use.browser.views import BrowserState
+	from custom_browser_use.agent.views import ActionResult, AgentStepInfo
+	from custom_browser_use.browser.views import BrowserState
 
 
 class SystemPrompt:
@@ -20,7 +20,7 @@ class SystemPrompt:
 		"""Load the prompt template from the markdown file."""
 		try:
 			# This works both in development and when installed as a package
-			with importlib.resources.files('browser_use.agent').joinpath('system_prompt.md').open('r') as f:
+			with importlib.resources.files('custom_browser_use.agent').joinpath('system_prompt.md').open('r') as f:
 				self.prompt_template = f.read()
 		except Exception as e:
 			raise RuntimeError(f'Failed to load system prompt template: {e}')

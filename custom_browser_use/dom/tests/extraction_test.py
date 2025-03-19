@@ -1,10 +1,10 @@
 import asyncio
 import time
 
-from browser_use.browser.browser import Browser, BrowserConfig
-from browser_use.browser.context import BrowserContext, BrowserContextConfig
-from browser_use.dom.service import DomService
-from browser_use.utils import time_execution_sync
+from custom_browser_use.browser.browser import Browser, BrowserConfig
+from custom_browser_use.browser.context import BrowserContext, BrowserContextConfig
+from custom_browser_use.dom.service import DomService
+from custom_browser_use.utils import time_execution_sync
 
 
 async def test_process_html_file():

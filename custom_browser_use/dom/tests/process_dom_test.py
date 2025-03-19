@@ -2,7 +2,7 @@ import json
 import os
 import time
 
-from browser_use.browser.browser import Browser, BrowserConfig
+from custom_browser_use.browser.browser import Browser, BrowserConfig
 
 
 async def test_process_dom():
@@ -17,7 +17,7 @@ async def test_process_dom():
 
 		time.sleep(3)
 
-		with open('browser_use/dom/buildDomTree.js', 'r') as f:
+		with open('custom_browser_use/dom/buildDomTree.js', 'r') as f:
 			js_code = f.read()
 
 		start = time.time()

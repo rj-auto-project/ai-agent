@@ -12,11 +12,11 @@ from langchain_core.messages import (
 )
 from pydantic import BaseModel
 
-from browser_use.agent.message_manager.views import MessageMetadata
-from browser_use.agent.prompts import AgentMessagePrompt
-from browser_use.agent.views import ActionResult, AgentOutput, AgentStepInfo, MessageManagerState
-from browser_use.browser.views import BrowserState
-from browser_use.utils import time_execution_sync
+from custom_browser_use.agent.message_manager.views import MessageMetadata
+from custom_browser_use.agent.prompts import AgentMessagePrompt
+from custom_browser_use.agent.views import ActionResult, AgentOutput, AgentStepInfo, MessageManagerState
+from custom_browser_use.browser.views import BrowserState
+from custom_browser_use.utils import time_execution_sync
 
 logger = logging.getLogger(__name__)
 

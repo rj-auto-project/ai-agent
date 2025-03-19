@@ -14,8 +14,8 @@ from playwright.async_api import (
 	async_playwright,
 )
 
-from browser_use.browser.context import BrowserContext, BrowserContextConfig
-from browser_use.utils import time_execution_async
+from custom_browser_use.browser.context import BrowserContext, BrowserContextConfig
+from custom_browser_use.utils import time_execution_async
 
 logger = logging.getLogger(__name__)
 

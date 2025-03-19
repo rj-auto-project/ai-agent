@@ -9,10 +9,10 @@ from langchain_core.prompts import PromptTemplate
 # from lmnr.sdk.laminar import Laminar
 from pydantic import BaseModel
 
-from browser_use.agent.views import ActionModel, ActionResult
-from browser_use.browser.context import BrowserContext
-from browser_use.controller.registry.service import Registry
-from browser_use.controller.views import (
+from custom_browser_use.agent.views import ActionModel, ActionResult
+from custom_browser_use.browser.context import BrowserContext
+from custom_browser_use.controller.registry.service import Registry
+from custom_browser_use.controller.views import (
 	ClickElementAction,
 	DoneAction,
 	GoToUrlAction,
@@ -24,7 +24,7 @@ from browser_use.controller.views import (
 	SendKeysAction,
 	SwitchTabAction,
 )
-from browser_use.utils import time_execution_sync
+from custom_browser_use.utils import time_execution_sync
 
 logger = logging.getLogger(__name__)
 

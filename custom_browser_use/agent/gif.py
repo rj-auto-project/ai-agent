@@ -7,7 +7,7 @@ import os
 import platform
 from typing import TYPE_CHECKING, Optional
 
-from browser_use.agent.views import (
+from custom_browser_use.agent.views import (
 	AgentHistoryList,
 )
 

@@ -1,16 +1,16 @@
 import pytest
 
-from browser_use.agent.views import (
+from custom_browser_use.agent.views import (
 	ActionResult,
 	AgentBrain,
 	AgentHistory,
 	AgentHistoryList,
 	AgentOutput,
 )
-from browser_use.browser.views import BrowserState, BrowserStateHistory, TabInfo
-from browser_use.controller.registry.service import Registry
-from browser_use.controller.views import ClickElementAction, DoneAction, ExtractPageContentAction
-from browser_use.dom.views import DOMElementNode
+from custom_browser_use.browser.views import BrowserState, BrowserStateHistory, TabInfo
+from custom_browser_use.controller.registry.service import Registry
+from custom_browser_use.controller.views import ClickElementAction, DoneAction, ExtractPageContentAction
+from custom_browser_use.dom.views import DOMElementNode
 
 
 @pytest.fixture
@@ -194,4 +194,4 @@ def test_action_creation(action_registry):
 
 
 # run this with:
-# pytest browser_use/agent/tests.py
+# pytest custom_browser_use/agent/tests.py
