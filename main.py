@@ -22,11 +22,11 @@ except ImportError as e:
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 api_key = os.getenv("GEMINI_API_KEY")
-username = os.getenv("USERNAME")
+ssoid = os.getenv("SSOID")
 password = os.getenv("PASSWORD")
 pin = os.getenv("PIN")
 
-if not all([api_key, username, password, pin]):
+if not all([api_key, ssoid, password, pin]):
     print("Error: Missing required environment variables in .env")
     sys.exit(1)
 
@@ -40,7 +40,7 @@ async def main():
         task=f"""
         1. Go to https://sso.rajasthan.gov.in/signin?encq=m0ZUFHLqc4t+0vQu27K7jl5cOBbodS7JFafFdflRFZs=.
         2. Complete the login process:
-            ◦ Enter username: '{username}'
+            ◦ Enter SSOID: '{ssoid}'
             ◦ Enter password: '{password}'
             ◦ Enter captcha (ensure it's filled before clicking login). 
             ◦ If captcha is incorrect → Refresh the page and retry login. 
