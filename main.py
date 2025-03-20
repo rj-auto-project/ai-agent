@@ -4,13 +4,13 @@ import sys
 import asyncio
 from pydantic import SecretStr
 from dotenv import load_dotenv
+import time
 
 # Ensure the current directory is in sys.path to find custom_browser_use
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# Import custom_browser_use from the current directory
 try:
     from custom_browser_use import Browser, Agent
 except ImportError as e:
@@ -18,8 +18,8 @@ except ImportError as e:
     print("Ensure custom_browser_use.py or custom_browser_use/ is in the same directory as this script.")
     sys.exit(1)
 
-# Load .env from the parent directory (since the Bash script creates it there)
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
+# Load .env from the parent directory
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 api_key = "AIzaSyCaRsppu7pV85-FvdjfcEsa5SKDQP-B880"
 ssoid = os.getenv("SSOID")
@@ -34,41 +34,57 @@ if not all([api_key, ssoid, password, pin]):
 llm = ChatGoogleGenerativeAI(model='gemini-2.0-flash-exp', api_key=SecretStr(api_key))
 browser = Browser()
 
-# Create agent with the model
+# Improved agent with better instructions and error handling
 async def main():
     agent = Agent(
         task=f"""
-        1. Go to https://sso.rajasthan.gov.in/signin?encq=m0ZUFHLqc4t+0vQu27K7jl5cOBbodS7JFafFdflRFZs=.
-        2. Complete the login process:
-            ◦ Enter SSOID: '{ssoid}'
-            ◦ Enter password: '{password}'
-            ◦ Enter captcha (ensure it's filled before clicking login). 
-            ◦ If captcha is incorrect → Refresh the page and retry login. 
-            ◦ If another session is active, enter the password again, check the confirmation checkbox, but do not enter captcha. Click login. 
-            ◦ If prompted for a PIN, enter '{pin}' to proceed. 
-        3. Wait for the Dashboard to load completely.
-        4. Locate and click on 'Load Data' (Only in the E-File section within the dashboard, NOT in the navigation panel).
-        5. Find the number under the "E-File" section (it can be any number, not just '1').
-            • Ensure it is inside the "E-File" section, NOT the calendar on the right. 
-            • Click on the blue-colored number (e.g., 1, 2, 10, etc.) inside the E-File table only. 
-            • If clicking does not navigate to the next page, retry clicking until it moves forward.
-        6. Once the new table opens:
-            ◦ Find the blue-colored file number under the "File Number" column. 
-            ◦ Click on the file number to open its details. 
-        7. In the newly opened page:
-            ◦ Hover over the "More" button on the top blue section on the right side of 'View Movement' option. 
-            ◦ Click on the "Dispose" button.
-            ◦ When a popup appears, replace the text inside input field of "Dispose Remark Reason" i.e. 'File Purpose is disposed' with '-'.
-            ◦ click on "Dispose File" to finalize. 
-        8. When disposed, get to the next file to dispose it as well.
-        9. Use step 6 and 7 to dispose other files as well
-        9. Keep disposing until all the files are not disposed.
+        1. Navigate to https://sso.rajasthan.gov.in/signin?encq=m0ZUFHLqc4t+0vQu27K7jl5cOBbodS7JFafFdflRFZs=.
+        2. Perform the login process with these steps:
+            ◦ Enter SSOID: '{ssoid}' in the SSOID field.
+            ◦ Enter password: '{password}' in the password field.
+            ◦ Fill the captcha field (read and enter the visible captcha text).
+            ◦ If captcha fails (e.g., login error indicating incorrect captcha):
+                - Refresh the entire page and restart login from step 2.
+            ◦ If prompted "another session is active":
+                - first, Enter the password '{password}'.
+                - second, Check the confirmation checkbox.
+                - Do NOT re-enter captcha unless explicitly required.
+                - third, Click the login button.
+            ◦ If prompted for a PIN, enter '{pin}' and submit.
+            ◦ Wait up to 30 seconds for the Dashboard to load fully. If it doesn't load, refresh the webpage and retry login up to 3 times.
+        3. Once on the Dashboard:
+            ◦ Wait for the page to fully load (up to 30 seconds).
+            ◦ Locate and click 'Load Dta' ONLY in the E-File section in dashboard (not in the navigation panel).
+        4. In the E-File block:
+            ◦ Find any blue-colored number (e.g., 1, 2, 10) below the E-File sub-heading in dashboard (ignore the calendar on the right).
+            ◦ Click the number. If it doesn't navigate to the next page, retry clicking up to 5 times with a 2-second delay between attempts.
+        5. On the new table page:
+            ◦ Locate the blue-colored file number under the "File Number" column.
+            ◦ Click it to open the file details.
+        6. On the file details page:
+            ◦ Hover over the "More" button in the top blue section, right of 'View Movement'.
+            ◦ Click "Dispose" from the dropdown.
+            ◦ In the popup, replace the "Dispose Remark Reason" text (default 'File Purpose is disposed') with '-'.
+            ◦ Click "Dispose File" to submit.
+        7. After disposing a file:
+            ◦ Return to the E-File table (step 4) and repeat steps 5-6 for the next file.
+            ◦ Continue until no blue-colored numbers remain in the E-File table.
+        8. Error Handling:
+            ◦ If any step fails (e.g., element not found, page not loading), wait 5 seconds and retry up to 3 times before moving to the next step or file.
+            ◦ If login fails completely after 5 attempts, stop and report failure.
         """,
         llm=llm,
-        max_failures=10,
+        max_failures=15,  # Increased to allow more retries
         browser=browser,
     )
-    await agent.run()
+    
+    # Run the agent with a timeout for the entire process
+    try:
+        await asyncio.wait_for(agent.run(), timeout=3600)  # 1-hour timeout for the whole task
+    except asyncio.TimeoutError:
+        print("Process timed out after 1 hour.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
