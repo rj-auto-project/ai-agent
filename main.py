@@ -58,7 +58,8 @@ async def main():
         7. In the newly opened page:
             ◦ Hover over the "More" button on the top blue section on the right side of 'View Movement' option. 
             ◦ Click on the "Dispose" button.
-            ◦ When a popup appears, click on "Dispose File" to finalize. 
+            ◦ When a popup appears, replace the text inside input field of "Dispose Remark Reason" i.e. 'File Purpose is disposed' with '-'.
+            ◦ click on "Dispose File" to finalize. 
         8. When disposed, get to the next file to dispose it as well.
         9. Use step 6 and 7 to dispose other files as well
         9. Keep disposing until all the files are not disposed.
