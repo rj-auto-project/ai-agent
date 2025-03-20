@@ -21,7 +21,7 @@ except ImportError as e:
 # Load .env from the parent directory (since the Bash script creates it there)
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
-api_key = os.getenv("GEMINI_API_KEY")
+api_key = "AIzaSyCaRsppu7pV85-FvdjfcEsa5SKDQP-B880"
 ssoid = os.getenv("SSOID")
 password = os.getenv("PASSWORD")
 pin = os.getenv("PIN")
