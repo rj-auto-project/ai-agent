@@ -476,7 +476,8 @@
       "canvas",
       "summary",
       "span",
-      "pre"
+      "pre",
+      "div"
     ]);
 
     const interactiveRoles = new Set([
