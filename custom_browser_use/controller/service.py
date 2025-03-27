@@ -1,6 +1,8 @@
 import asyncio
+import enum
 import json
 import logging
+import re
 from typing import Dict, Generic, Optional, Type, TypeVar
 
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -14,8 +16,13 @@ from custom_browser_use.browser.context import BrowserContext
 from custom_browser_use.controller.registry.service import Registry
 from custom_browser_use.controller.views import (
 	ClickElementAction,
+	ClickElementBySelectorAction,
+	ClickElementByTextAction,
+	ClickElementByXpathAction,
+	CloseTabAction,
 	DoneAction,
 	GoToUrlAction,
+	GroupTabsAction,
 	InputTextAction,
 	NoParamsAction,
 	OpenTabAction,
@@ -23,6 +30,7 @@ from custom_browser_use.controller.views import (
 	SearchGoogleAction,
 	SendKeysAction,
 	SwitchTabAction,
+	UngroupTabsAction,
 )
 from custom_browser_use.utils import time_execution_sync
 
@@ -44,8 +52,9 @@ class Controller(Generic[Context]):
 
 		if output_model is not None:
 			# Create a new model that extends the output model with success parameter
-			class ExtendedOutputModel(output_model):  # type: ignore
+			class ExtendedOutputModel(BaseModel):  # type: ignore
 				success: bool = True
+				data: output_model
 
 			@self.registry.action(
 				'Complete task - with return text and if the task is finished (success=True) or not yet  completly finished (success=False), because last step is reached',
@@ -53,7 +62,13 @@ class Controller(Generic[Context]):
 			)
 			async def done(params: ExtendedOutputModel):
 				# Exclude success from the output JSON since it's an internal parameter
-				output_dict = params.model_dump(exclude={'success'})
+				output_dict = params.data.model_dump()
+
+				# Enums are not serializable, convert to string
+				for key, value in output_dict.items():
+					if isinstance(value, enum.Enum):
+						output_dict[key] = value.value
+
 				return ActionResult(is_done=True, success=params.success, extracted_content=json.dumps(output_dict))
 		else:
 
@@ -102,8 +117,8 @@ class Controller(Generic[Context]):
 			return ActionResult(extracted_content=msg, include_in_memory=True)
 
 		# Element Interaction Actions
-		@self.registry.action('Click element', param_model=ClickElementAction)
-		async def click_element(params: ClickElementAction, browser: BrowserContext):
+		@self.registry.action('Click element by index', param_model=ClickElementAction)
+		async def click_element_by_index(params: ClickElementAction, browser: BrowserContext):
 			session = await browser.get_session()
 
 			if params.index not in await browser.get_selector_map():
@@ -139,6 +154,48 @@ class Controller(Generic[Context]):
 				logger.warning(f'Element not clickable with index {params.index} - most likely the page changed')
 				return ActionResult(error=str(e))
 
+		@self.registry.action('Click element by selector', param_model=ClickElementBySelectorAction)
+		async def click_element_by_selector(params: ClickElementBySelectorAction, browser: BrowserContext):
+			try:
+				element_node = await browser.get_locate_element_by_css_selector(params.css_selector)
+				if element_node:
+					await element_node.click()
+					msg = f'🖱️  Clicked on element with selector {params.css_selector}'
+					return ActionResult(extracted_content=msg, include_in_memory=True)
+			except Exception as e:
+				logger.warning(f'Element not clickable with selector {params.css_selector} - most likely the page changed')
+				return ActionResult(error=str(e))
+
+		@self.registry.action('Click on element by xpath', param_model=ClickElementByXpathAction)
+		async def click_element_by_xpath(params: ClickElementByXpathAction, browser: BrowserContext):
+			try:
+				element_node = await browser.get_locate_element_by_xpath(params.xpath)
+				if element_node:
+					await element_node.click()
+					msg = f'🖱️  Clicked on element with xpath {params.xpath}'
+					return ActionResult(extracted_content=msg, include_in_memory=True)
+			except Exception as e:
+				logger.warning(f'Element not clickable with xpath {params.xpath} - most likely the page changed')
+				return ActionResult(error=str(e))
+
+		@self.registry.action('Click element with text', param_model=ClickElementByTextAction)
+		async def click_element_by_text(params: ClickElementByTextAction, browser: BrowserContext):
+			try:
+				element_node = await browser.get_locate_element_by_text(
+					text=params.text,
+					nth=params.nth,
+				)
+
+				if element_node:
+					await element_node.click()
+					msg = f'🖱️  Clicked on element with text {params.text}'
+					return ActionResult(extracted_content=msg, include_in_memory=True)
+				else:
+					return ActionResult(error=f"No element found for text '{params.text}'")
+			except Exception as e:
+				logger.warning(f"Element not clickable with text {params.text} - {e}")
+				return ActionResult(error=str(e))
+
 		@self.registry.action(
 			'Input text into a input interactive element',
 			param_model=InputTextAction,
@@ -155,6 +212,22 @@ class Controller(Generic[Context]):
 				msg = f'⌨️  Input sensitive data into index {params.index}'
 			logger.info(msg)
 			logger.debug(f'Element xpath: {element_node.xpath}')
+			return ActionResult(extracted_content=msg, include_in_memory=True)
+
+		# Save PDF
+		@self.registry.action(
+			'Save the current page as a PDF file',
+		)
+		async def save_pdf(browser: BrowserContext):
+			page = await browser.get_current_page()
+			short_url = re.sub(r'^https?://(?:www\.)?|/$', '', page.url)
+			slug = re.sub(r'[^a-zA-Z0-9]+', '-', short_url).strip('-').lower()
+			sanitized_filename = f'{slug}.pdf'
+
+			await page.emulate_media('screen')
+			await page.pdf(path=sanitized_filename, format='A4', print_background=False)
+			msg = f'Saving page with URL {page.url} as PDF to ./{sanitized_filename}'
+			logger.info(msg)
 			return ActionResult(extracted_content=msg, include_in_memory=True)
 
 		# Tab Management Actions
@@ -175,6 +248,16 @@ class Controller(Generic[Context]):
 			logger.info(msg)
 			return ActionResult(extracted_content=msg, include_in_memory=True)
 
+		@self.registry.action('Close an existing tab', param_model=CloseTabAction)
+		async def close_tab(params: CloseTabAction, browser: BrowserContext):
+			await browser.switch_to_tab(params.page_id)
+			page = await browser.get_current_page()
+			url = page.url
+			await page.close()
+			msg = f'❌  Closed tab #{params.page_id} with url {url}'
+			logger.info(msg)
+			return ActionResult(extracted_content=msg, include_in_memory=True)
+
 		# Content Actions
 		@self.registry.action(
 			'Extract page content to retrieve specific information from the page, e.g. all company names, a specifc description, all information about, links with companies in structured format or simply links',
@@ -184,6 +267,12 @@ class Controller(Generic[Context]):
 			import markdownify
 
 			content = markdownify.markdownify(await page.content())
+
+			# manually append iframe text into the content so it's readable by the LLM (includes cross-origin iframes)
+			for iframe in page.frames:
+				if iframe.url != page.url and not iframe.url.startswith('data:'):
+					content += f'\n\nIFRAME {iframe.url}:\n'
+					content += markdownify.markdownify(await iframe.content())
 
 			prompt = 'Your task is to extract the content of the page. You will be given a page and a goal and you should extract all relevant information around this goal from the page. If the goal is vague, summarize the page. Respond in json format. Extraction goal: {goal}, Page: {page}'
 			template = PromptTemplate(input_variables=['goal', 'page'], template=prompt)

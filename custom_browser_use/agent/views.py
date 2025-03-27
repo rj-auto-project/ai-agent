@@ -12,7 +12,6 @@ from openai import RateLimitError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, create_model
 
 from custom_browser_use.agent.message_manager.views import MessageManagerState
-from custom_browser_use.agent.prompts import SystemPrompt
 from custom_browser_use.browser.views import BrowserStateHistory
 from custom_browser_use.controller.registry.views import ActionModel
 from custom_browser_use.dom.history_tree_processor.service import (
@@ -34,12 +33,13 @@ class AgentSettings(BaseModel):
 	save_conversation_path_encoding: Optional[str] = 'utf-8'
 	max_failures: int = 3
 	retry_delay: int = 10
-	system_prompt_class: Type[SystemPrompt] = SystemPrompt
 	max_input_tokens: int = 128000
 	validate_output: bool = False
 	message_context: Optional[str] = None
 	generate_gif: bool | str = False
 	available_file_paths: Optional[list[str]] = None
+	override_system_message: Optional[str] = None
+	extend_system_message: Optional[str] = None
 	include_attributes: list[str] = [
 		'title',
 		'type',
@@ -166,7 +166,7 @@ class AgentHistory(BaseModel):
 		elements = []
 		for action in model_output.action:
 			index = action.get_index()
-			if index and index in selector_map:
+			if index is not None and index in selector_map:
 				el: DOMElementNode = selector_map[index]
 				elements.append(HistoryTreeProcessor.convert_dom_element_to_history_element(el))
 			else:
@@ -356,8 +356,10 @@ class AgentHistoryList(BaseModel):
 			content.extend([r.extracted_content for r in h.result if r.extracted_content])
 		return content
 
-	def model_actions_filtered(self, include: list[str] = []) -> list[dict]:
+	def model_actions_filtered(self, include: list[str] | None = None) -> list[dict]:
 		"""Get all model actions from history as JSON"""
+		if include is None:
+			include = []
 		outputs = self.model_actions()
 		result = []
 		for o in outputs:

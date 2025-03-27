@@ -107,6 +107,21 @@ class BrowserContextConfig:
 
 	    include_dynamic_attributes: bool = True
 	        Include dynamic attributes in the CSS selector. If you want to reuse the css_selectors, it might be better to set this to False.
+
+	    is_mobile: None
+	        Whether the meta viewport tag is taken into account and touch events are enabled.
+
+	    has_touch: None
+	        Whether to enable touch events in the browser.
+
+	    geolocation: None
+	        Geolocation to be used in the browser context. Example: {'latitude': 59.95, 'longitude': 30.31667}
+
+	    permissions: None
+	        Browser permissions to grant. Values might include: ['geolocation', 'notifications']
+
+	    timezone_id: None
+	        Changes the timezone of the browser. Example: 'Europe/Berlin'
 	"""
 
 	cookies_file: str | None = None
@@ -122,6 +137,7 @@ class BrowserContextConfig:
 
 	save_recording_path: str | None = None
 	save_downloads_path: str | None = None
+	save_har_path: str | None = None
 	trace_path: str | None = None
 	locale: str | None = None
 	user_agent: str = (
@@ -134,6 +150,11 @@ class BrowserContextConfig:
 	include_dynamic_attributes: bool = True
 
 	_force_keep_context_alive: bool = False
+	is_mobile: bool | None = None
+	has_touch: bool | None = None
+	geolocation: dict | None = None
+	permissions: list[str] | None = None
+	timezone_id: str | None = None
 
 
 @dataclass
@@ -263,12 +284,18 @@ class BrowserContext:
 
 		# If no target ID or couldn't find it, use existing page or create new
 		if not active_page:
-			if pages:
+			if (
+				pages
+				and pages[0].url
+				and not pages[0].url.startswith('chrome://')
+				and not pages[0].url.startswith('chrome-extension://')
+			):
 				active_page = pages[0]
-				logger.debug('Using existing page')
+				logger.debug('Using existing page: %s', active_page.url)
 			else:
 				active_page = await context.new_page()
-				logger.debug('Created new page')
+				await active_page.goto('about:blank')
+				logger.debug('Created new page: %s', active_page.url)
 
 			# Get target ID for the active page
 			if self.browser.config.cdp_url:
@@ -279,6 +306,7 @@ class BrowserContext:
 						break
 
 		# Bring page to front
+		logger.debug('Bringing tab to front: %s', active_page)
 		await active_page.bring_to_front()
 		await active_page.wait_for_load_state('load')
 
@@ -311,21 +339,26 @@ class BrowserContext:
 		"""Creates a new browser context with anti-detection measures and loads cookies if available."""
 		if self.browser.config.cdp_url and len(browser.contexts) > 0:
 			context = browser.contexts[0]
-		elif self.browser.config.chrome_instance_path and len(browser.contexts) > 0:
+		elif self.browser.config.browser_instance_path and len(browser.contexts) > 0:
 			# Connect to existing Chrome instance instead of creating new one
 			context = browser.contexts[0]
 		else:
 			# Original code for creating new context
 			context = await browser.new_context(
-				viewport=self.config.browser_window_size,
-				no_viewport=False,
+				no_viewport=True,
 				user_agent=self.config.user_agent,
 				java_script_enabled=True,
 				bypass_csp=self.config.disable_security,
 				ignore_https_errors=self.config.disable_security,
 				record_video_dir=self.config.save_recording_path,
 				record_video_size=self.config.browser_window_size,
+				record_har_path=self.config.save_har_path,
 				locale=self.config.locale,
+				is_mobile=self.config.is_mobile,
+				has_touch=self.config.has_touch,
+				geolocation=self.config.geolocation,
+				permissions=self.config.permissions,
+				timezone_id=self.config.timezone_id,
 			)
 
 		if self.config.trace_path:
@@ -589,6 +622,10 @@ class BrowserContext:
 			parsed_url = urlparse(url)
 			domain = parsed_url.netloc.lower()
 
+			# Special case: Allow 'about:blank' explicitly
+			if url == 'about:blank':
+				return True
+
 			# Remove port number if present
 			if ':' in domain:
 				domain = domain.split(':')[0]
@@ -669,6 +706,77 @@ class BrowserContext:
 		page = await self.get_current_page()
 		return await page.evaluate(script)
 
+	async def get_page_structure(self) -> str:
+		"""Get a debug view of the page structure including iframes"""
+		debug_script = """(() => {
+			function getPageStructure(element = document, depth = 0, maxDepth = 10) {
+				if (depth >= maxDepth) return '';
+				
+				const indent = '  '.repeat(depth);
+				let structure = '';
+				
+				// Skip certain elements that clutter the output
+				const skipTags = new Set(['script', 'style', 'link', 'meta', 'noscript']);
+				
+				// Add current element info if it's not the document
+				if (element !== document) {
+					const tagName = element.tagName.toLowerCase();
+					
+					// Skip uninteresting elements
+					if (skipTags.has(tagName)) return '';
+					
+					const id = element.id ? `#${element.id}` : '';
+					const classes = element.className && typeof element.className === 'string' ? 
+						`.${element.className.split(' ').filter(c => c).join('.')}` : '';
+					
+					// Get additional useful attributes
+					const attrs = [];
+					if (element.getAttribute('role')) attrs.push(`role="${element.getAttribute('role')}"`);
+					if (element.getAttribute('aria-label')) attrs.push(`aria-label="${element.getAttribute('aria-label')}"`);
+					if (element.getAttribute('type')) attrs.push(`type="${element.getAttribute('type')}"`);
+					if (element.getAttribute('name')) attrs.push(`name="${element.getAttribute('name')}"`);
+					if (element.getAttribute('src')) {
+						const src = element.getAttribute('src');
+						attrs.push(`src="${src.substring(0, 50)}${src.length > 50 ? '...' : ''}"`);
+					}
+					
+					// Add element info
+					structure += `${indent}${tagName}${id}${classes}${attrs.length ? ' [' + attrs.join(', ') + ']' : ''}\\n`;
+					
+					// Handle iframes specially
+					if (tagName === 'iframe') {
+						try {
+							const iframeDoc = element.contentDocument || element.contentWindow?.document;
+							if (iframeDoc) {
+								structure += `${indent}  [IFRAME CONTENT]:\\n`;
+								structure += getPageStructure(iframeDoc, depth + 2, maxDepth);
+							} else {
+								structure += `${indent}  [IFRAME: No access - likely cross-origin]\\n`;
+							}
+						} catch (e) {
+							structure += `${indent}  [IFRAME: Access denied - ${e.message}]\\n`;
+						}
+					}
+				}
+				
+				// Get all child elements
+				const children = element.children || element.childNodes;
+				for (const child of children) {
+					if (child.nodeType === 1) { // Element nodes only
+						structure += getPageStructure(child, depth + 1, maxDepth);
+					}
+				}
+				
+				return structure;
+			}
+			
+			return getPageStructure();
+		})()"""
+
+		page = await self.get_current_page()
+		structure = await page.evaluate(debug_script)
+		return structure
+
 	@time_execution_sync('--get_state')  # This decorator might need to be updated to handle async
 	async def get_state(self) -> BrowserState:
 		"""Get the current state of the browser"""
@@ -711,6 +819,28 @@ class BrowserContext:
 				highlight_elements=self.config.highlight_elements,
 			)
 
+			tabs_info = await self.get_tabs_info()
+
+			# Get all cross-origin iframes within the page and open them in new tabs
+			# mark the titles of the new tabs so the LLM knows to check them for additional content
+			# unfortunately too buggy for now, too many sites use invisible cross-origin iframes for ads, tracking, youtube videos, social media, etc.
+			# and it distracts the bot by openeing a lot of new tabs
+			# iframe_urls = await dom_service.get_cross_origin_iframes()
+			# for url in iframe_urls:
+			# 	if url in [tab.url for tab in tabs_info]:
+			# 		continue  # skip if the iframe if we already have it open in a tab
+			# 	new_page_id = tabs_info[-1].page_id + 1
+			# 	logger.debug(f'Opening cross-origin iframe in new tab #{new_page_id}: {url}')
+			# 	await self.create_new_tab(url)
+			# 	tabs_info.append(
+			# 		TabInfo(
+			# 			page_id=new_page_id,
+			# 			url=url,
+			# 			title=f'iFrame opened as new tab, treat as if embedded inside page #{self.state.target_id}: {page.url}',
+			# 			parent_page_id=self.state.target_id,
+			# 		)
+			# 	)
+
 			screenshot_b64 = await self.take_screenshot()
 			pixels_above, pixels_below = await self.get_scroll_info(page)
 
@@ -719,7 +849,7 @@ class BrowserContext:
 				selector_map=content.selector_map,
 				url=page.url,
 				title=await page.title(),
-				tabs=await self.get_tabs_info(),
+				tabs=tabs_info,
 				screenshot=screenshot_b64,
 				pixels_above=pixels_above,
 				pixels_below=pixels_below,
@@ -808,9 +938,18 @@ class BrowserContext:
 			if not part:
 				continue
 
+			# Handle custom elements with colons by escaping them
+			if ':' in part and '[' not in part:
+				base_part = part.replace(':', r'\:')
+				css_parts.append(base_part)
+				continue
+
 			# Handle index notation [n]
 			if '[' in part:
 				base_part = part[: part.find('[')]
+				# Handle custom elements with colons in the base part
+				if ':' in base_part:
+					base_part = base_part.replace(':', r'\:')
 				index_part = part[part.find('[') :]
 
 				# Handle multiple indices
@@ -989,6 +1128,75 @@ class BrowserContext:
 			logger.error(f'Failed to locate element: {str(e)}')
 			return None
 
+	@time_execution_async('--get_locate_element_by_xpath')
+	async def get_locate_element_by_xpath(self, xpath: str) -> Optional[ElementHandle]:
+		"""
+		Locates an element on the page using the provided XPath.
+		"""
+		current_frame = await self.get_current_page()
+
+		try:
+			# Use XPath to locate the element
+			element_handle = await current_frame.query_selector(f'xpath={xpath}')
+			if element_handle:
+				await element_handle.scroll_into_view_if_needed()
+				return element_handle
+			return None
+		except Exception as e:
+			logger.error(f'Failed to locate element by XPath {xpath}: {str(e)}')
+			return None
+
+	@time_execution_async('--get_locate_element_by_css_selector')
+	async def get_locate_element_by_css_selector(self, css_selector: str) -> Optional[ElementHandle]:
+		"""
+		Locates an element on the page using the provided CSS selector.
+		"""
+		current_frame = await self.get_current_page()
+
+		try:
+			# Use CSS selector to locate the element
+			element_handle = await current_frame.query_selector(css_selector)
+			if element_handle:
+				await element_handle.scroll_into_view_if_needed()
+				return element_handle
+			return None
+		except Exception as e:
+			logger.error(f'Failed to locate element by CSS selector {css_selector}: {str(e)}')
+			return None
+
+	@time_execution_async('--get_locate_element_by_text')
+	async def get_locate_element_by_text(self, text: str, nth: Optional[int] = 0) -> Optional[ElementHandle]:
+		"""
+		Locates an element on the page using the provided text.
+		If `nth` is provided, it returns the nth matching element (0-based).
+		"""
+		current_frame = await self.get_current_page()
+		try:
+			elements = await current_frame.query_selector_all(f"text={text}")
+			# considering only visible elements
+			elements = [el for el in elements if await el.is_visible()]
+
+			if not elements:
+				logger.error(f"No visible element with text '{text}' found.")
+				return None
+
+			if nth is not None:
+				if 0 <= nth < len(elements):
+					element_handle = elements[nth]
+				else:
+					logger.error(f"Visible element with text '{text}' not found at index {nth}.")
+					return None
+			else:
+				element_handle = elements[0]
+
+			await element_handle.scroll_into_view_if_needed()
+			return element_handle
+		except Exception as e:
+			logger.error(f"Failed to locate element by text '{text}': {str(e)}")
+			return None
+
+
+
 	@time_execution_async('--input_text_element_node')
 	async def _input_text_element_node(self, element_node: DOMElementNode, text: str):
 		"""
@@ -1013,10 +1221,16 @@ class BrowserContext:
 				pass
 
 			# Get element properties to determine input method
+			tag_handle = await element_handle.get_property('tagName')
+			tag_name = (await tag_handle.json_value()).lower()
 			is_contenteditable = await element_handle.get_property('isContentEditable')
+			readonly_handle = await element_handle.get_property('readOnly')
+			disabled_handle = await element_handle.get_property('disabled')
 
-			# Different handling for contenteditable vs input fields
-			if await is_contenteditable.json_value():
+			readonly = await readonly_handle.json_value() if readonly_handle else False
+			disabled = await disabled_handle.json_value() if disabled_handle else False
+
+			if (await is_contenteditable.json_value() or tag_name == 'input') and not (readonly or disabled):
 				await element_handle.evaluate('el => el.textContent = ""')
 				await element_handle.type(text, delay=5)
 			else:
@@ -1094,7 +1308,13 @@ class BrowserContext:
 
 		tabs_info = []
 		for page_id, page in enumerate(session.context.pages):
-			tab_info = TabInfo(page_id=page_id, url=page.url, title=await page.title())
+			try:
+				tab_info = TabInfo(page_id=page_id, url=page.url, title=await asyncio.wait_for(page.title(), timeout=1))
+			except asyncio.TimeoutError:
+				# page.title() can hang forever on tabs that are crashed/dissapeared/about:blank
+				# we dont want to try automating those tabs because they will hang the whole script
+				logger.debug('Failed to get tab info for tab #%s: %s (ignoring)', page_id, page.url)
+				tab_info = TabInfo(page_id=page_id, url='about:blank', title='ignore this tab and do not use it')
 			tabs_info.append(tab_info)
 
 		return tabs_info
@@ -1162,8 +1382,13 @@ class BrowserContext:
 						if page.url == target['url']:
 							return page
 
-		# Fallback to last page
-		return pages[-1] if pages else await session.context.new_page()
+		# fall back to most recently opened non-extension page (extensions are almost always invisible background targets)
+		non_extension_pages = [page for page in pages if not page.url.startswith('chrome-extension://')]
+		if non_extension_pages:
+			return non_extension_pages[-1]
+
+		# Fallback to opening a new tab
+		return await session.context.new_page()
 
 	async def get_selector_map(self) -> SelectorMap:
 		session = await self.get_session()

@@ -27,7 +27,7 @@ Example:
 Common action sequences:
 - Form filling: [{{"input_text": {{"index": 1, "text": "username"}}}}, {{"input_text": {{"index": 2, "text": "password"}}}}, {{"click_element": {{"index": 3}}}}]
 - Navigation and extraction: [{{"go_to_url": {{"url": "https://example.com"}}}}, {{"extract_content": {{"goal": "extract the names"}}}}]
-- Actions are executed in the given order
+- Actions must be executed serially
 - If the page changes after an action, the sequence is interrupted and you get the new state.
 - Only provide the action sequence until an action which changes the page state significantly.
 - Try to be efficient, e.g. fill forms at once, or chain actions where nothing changes on the page
