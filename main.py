@@ -118,6 +118,7 @@ async def main():
                         - If captcha fails (e.g., error indicating incorrect captcha):
                             - Refresh the entire page and restart login from step 2.
                         - If prompted like "another session is active":
+                            1. enter SSOID if not already entered else leave.
                             1. Check the confirmation checkbox.
                             2. Enter the password '{password}' in the password field.
                             3. Do NOT re-enter captcha unless explicitly required.
